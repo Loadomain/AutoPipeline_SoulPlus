@@ -77,7 +77,7 @@ namespace AutoPipeline
                     // Write to SP's credentials.json
                     try
                     {
-                        string spCredPath = @"e:\loadfield\workforce\software\自动化三合一\SouthPlusDownloader\publish\credentials.json";
+                        string spCredPath = Path.Combine(Form1.GetBaseDir(), "SouthPlusDownloader", "publish", "credentials.json");
                         var data = new { Cookie = ExtractedCookie, UserAgent = ExtractedUserAgent };
                         File.WriteAllText(spCredPath, JsonSerializer.Serialize(data));
                     } catch { }

@@ -12,7 +12,20 @@ namespace AutoPipeline
 {
     public partial class Form1 : Form
     {
-        private readonly string baseDir = @"e:\loadfield\workforce\software\自动化三合一";
+        private readonly string baseDir = GetBaseDir();
+
+        internal static string GetBaseDir()
+        {
+            var dir = new System.IO.DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
+            while (dir != null)
+            {
+                if (System.IO.Directory.Exists(System.IO.Path.Combine(dir.FullName, "SouthPlusDownloader")))
+                    return dir.FullName;
+                dir = dir.Parent;
+            }
+            return AppDomain.CurrentDomain.BaseDirectory;
+        }
+
         private string SPPath => Path.Combine(baseDir, "SouthPlusDownloader", "publish", "SouthPlusDownloader.exe");
         private string BaiduPath => Path.Combine(baseDir, "BaiduAutoDownloader", "publish", "BaiduAutoDownloader.exe");
         private string ExtractorPath => Path.Combine(baseDir, "AutoExtractor", "publish", "AutoExtractor.exe");
