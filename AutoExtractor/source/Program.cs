@@ -18,6 +18,8 @@ internal static class Program
         if (args.Length > 0)
         {
             AttachConsole(ATTACH_PARENT_PROCESS);
+            try { System.Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
+            System.Console.SetOut(new System.IO.StreamWriter(System.Console.OpenStandardOutput(), new System.Text.UTF8Encoding(false)) { AutoFlush = true });
             Console.WriteLine();
             RunCli(args);
         }

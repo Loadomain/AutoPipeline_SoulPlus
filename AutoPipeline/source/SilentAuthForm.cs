@@ -70,17 +70,18 @@ namespace AutoPipeline
                 if (hasWinduser && passedShield)
                 {
                     this.Text = "获取成功！检测到有效的论坛凭证，正在自动回填并保存...";
-                    
+
                     ExtractedCookie = string.Join("; ", cookies.Select(c => $"{c.Name}={c.Value}"));
                     Success = true;
 
                     // Write to SP's credentials.json
                     try
                     {
-                        string spCredPath = Path.Combine(Form1.GetBaseDir(), "SouthPlusDownloader", "publish", "credentials.json");
+                        string spCredPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..", "SouthPlusDownloader", "publish", "credentials.json");
                         var data = new { Cookie = ExtractedCookie, UserAgent = ExtractedUserAgent };
                         File.WriteAllText(spCredPath, JsonSerializer.Serialize(data));
-                    } catch { }
+                    }
+                    catch { }
 
                     await Task.Delay(1500);
                     this.DialogResult = DialogResult.OK;

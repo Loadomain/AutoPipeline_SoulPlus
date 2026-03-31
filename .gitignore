@@ -11,5 +11,7 @@
 /BaiduAutoDownloader/source/obj
 
 /AutoPipeline/publish
-/AutoPipeline/bin
-/AutoPipeline/obj
+/AutoPipeline/source/bin
+/AutoPipeline/source/obj
+
+/BaiduWebViewData

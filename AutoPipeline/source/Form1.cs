@@ -12,24 +12,12 @@ namespace AutoPipeline
 {
     public partial class Form1 : Form
     {
-        private readonly string baseDir = GetBaseDir();
-
-        internal static string GetBaseDir()
-        {
-            var dir = new System.IO.DirectoryInfo(AppDomain.CurrentDomain.BaseDirectory);
-            while (dir != null)
-            {
-                if (System.IO.Directory.Exists(System.IO.Path.Combine(dir.FullName, "SouthPlusDownloader")))
-                    return dir.FullName;
-                dir = dir.Parent;
-            }
-            return AppDomain.CurrentDomain.BaseDirectory;
-        }
+        private readonly string baseDir = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\.."));
 
         private string SPPath => Path.Combine(baseDir, "SouthPlusDownloader", "publish", "SouthPlusDownloader.exe");
         private string BaiduPath => Path.Combine(baseDir, "BaiduAutoDownloader", "publish", "BaiduAutoDownloader.exe");
         private string ExtractorPath => Path.Combine(baseDir, "AutoExtractor", "publish", "AutoExtractor.exe");
-        
+
         private string SpJsonPath => Path.Combine(baseDir, "SouthPlusDownloader", "publish", "southplus_results.json");
         private string SpBoardsPath => Path.Combine(baseDir, "SouthPlusDownloader", "publish", "boards.json");
         private string BaiduConfigPath => Path.Combine(baseDir, "BaiduAutoDownloader", "publish", "config.json");
@@ -83,8 +71,8 @@ namespace AutoPipeline
         {
             int max = 20;
             int filled = (int)(progress / 100.0 * max);
-            if(filled > max) filled = max;
-            if(filled < 0) filled = 0;
+            if (filled > max) filled = max;
+            if (filled < 0) filled = 0;
             string bar = new string('█', filled) + new string('░', max - filled);
             return $"[{bar}] {progress:F1}%";
         }
@@ -98,8 +86,8 @@ namespace AutoPipeline
                     string json = File.ReadAllText(SpBoardsPath);
                     var dict = JsonSerializer.Deserialize<Dictionary<string, int>>(json);
                     cmbBoards.Items.Clear();
-                    foreach(var k in dict.Keys) cmbBoards.Items.Add(k);
-                    if(cmbBoards.Items.Count > 0) cmbBoards.SelectedIndex = 0;
+                    foreach (var k in dict.Keys) cmbBoards.Items.Add(k);
+                    if (cmbBoards.Items.Count > 0) cmbBoards.SelectedIndex = 0;
                 }
             }
             catch (Exception ex)
@@ -116,17 +104,17 @@ namespace AutoPipeline
                 {
                     string json = File.ReadAllText(BaiduConfigPath);
                     var doc = JsonDocument.Parse(json);
-                    
+
                     if (doc.RootElement.TryGetProperty("ApiMode", out var apiModeNode))
                     {
                         var mode = apiModeNode.GetString();
                         rbPrivateApi.Checked = (mode == "Custom");
                         rbPublicApi.Checked = (mode != "Custom");
                     }
-                    
+
                     if (doc.RootElement.TryGetProperty("CustomAppKey", out var appKeyNode))
                         txtAppKey.Text = appKeyNode.GetString();
-                        
+
                     if (doc.RootElement.TryGetProperty("CustomSecretKey", out var secKeyNode))
                         txtSecretKey.Text = secKeyNode.GetString();
                 }
@@ -200,13 +188,13 @@ namespace AutoPipeline
         private void btnAuthBaidu_Click(object sender, EventArgs e)
         {
             string appKey = rbPrivateApi.Checked ? txtAppKey.Text.Trim() : "iYCeC9g08h5vuP9UqvPHKKSVrKFXGa1v";
-            
+
             if (string.IsNullOrEmpty(appKey))
             {
                 MessageBox.Show("应用 AppKey 为空，如果是私有通道请确保已输入！");
                 return;
             }
-            
+
             AppendLog("跳过原网盘客户端界面... 极速激活内嵌网页进行网盘登录...");
             using (var bauth = new BaiduAuthForm(appKey))
             {
@@ -214,10 +202,10 @@ namespace AutoPipeline
                 if (bauth.Success && !string.IsNullOrEmpty(bauth.AccessToken))
                 {
                     AppendLog("[授权通过] 网盘凭证已在 UI 内网拦截成功.");
-                    
+
                     // 保存 AccessToken 到 config.json 去给 BaiduAutoDownloader 用！
                     SaveBaiduConfig(); // 先刷基础配置
-                    
+
                     try
                     {
                         string oldJson = File.Exists(BaiduConfigPath) ? File.ReadAllText(BaiduConfigPath) : "{}";
@@ -225,7 +213,7 @@ namespace AutoPipeline
                         dict["AccessToken"] = bauth.AccessToken;
                         dict["ExpiryTime"] = DateTime.Now.AddDays(29); // 简化的 token 30 天有效期保存
                         File.WriteAllText(BaiduConfigPath, JsonSerializer.Serialize(dict, new JsonSerializerOptions { WriteIndented = true }));
-                        
+
                         AppendLog("[网盘配置刷新] 已将内嵌拦截的秘钥无缝转移到内核。");
                     }
                     catch { }
@@ -252,7 +240,7 @@ namespace AutoPipeline
         {
             AppendLog($"\n>>> 执行系统指令: {Path.GetFileName(filename)} {arguments}");
             var tcs = new TaskCompletionSource<int>();
-            
+
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo
@@ -264,12 +252,13 @@ namespace AutoPipeline
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true,
-                    // 取消强制指定编码，允许它使用操作系统默认的 GBK 回显防止中文乱码变成  和 框
+                    StandardOutputEncoding = System.Text.Encoding.UTF8,
+                    StandardErrorEncoding = System.Text.Encoding.UTF8
                 },
                 EnableRaisingEvents = true
             };
 
-            process.OutputDataReceived += (s, e) => 
+            process.OutputDataReceived += (s, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
                 {
@@ -285,7 +274,7 @@ namespace AutoPipeline
                     }
                 }
             };
-            
+
             process.ErrorDataReceived += (s, e) => { if (!string.IsNullOrEmpty(e.Data)) AppendLog($"[错误] {e.Data}"); };
 
             process.Exited += (s, e) =>
@@ -310,7 +299,7 @@ namespace AutoPipeline
 
                 // === 阶段 1：SP 爬取
                 AppendLog("\n>> [阶段 1/3] 南+数据采集...");
-                
+
                 string boardParam = "";
                 if (cmbBoards.SelectedItem != null && cmbBoards.SelectedItem.ToString() == "自定义")
                     boardParam = txtCustomBoard.Text;
@@ -321,13 +310,14 @@ namespace AutoPipeline
                         string json = File.ReadAllText(SpBoardsPath);
                         var dict = JsonSerializer.Deserialize<Dictionary<string, int>>(json);
                         boardParam = dict[cmbBoards.SelectedItem.ToString()].ToString();
-                    } catch {}
+                    }
+                    catch { }
                 }
-                if(string.IsNullOrEmpty(boardParam)) boardParam = "216";
+                if (string.IsNullOrEmpty(boardParam)) boardParam = "216";
 
                 string spArgs = $"-b {boardParam} -s {txtStartItem.Text} -e {txtEndItem.Text} -p {nudMaxPrice.Value} -k \"{txtKeywords.Text}\"";
-                if(!string.IsNullOrEmpty(txtExtractKeywords.Text)) spArgs += $" -c \"{txtExtractKeywords.Text}\"";
-                if(!string.IsNullOrEmpty(txtPasswordKeywords.Text)) spArgs += $" -pw \"{txtPasswordKeywords.Text}\"";
+                if (!string.IsNullOrEmpty(txtExtractKeywords.Text)) spArgs += $" -c \"{txtExtractKeywords.Text}\"";
+                if (!string.IsNullOrEmpty(txtPasswordKeywords.Text)) spArgs += $" -pw \"{txtPasswordKeywords.Text}\"";
                 spArgs += " -l"; // enable log
 
                 await RunProcessAndLogAsync(SPPath, spArgs);
@@ -336,9 +326,9 @@ namespace AutoPipeline
                 tabControl1.SelectedTab = tabDownloads;
                 dgvDownloads.Rows.Clear();
                 AppendLog("\n>> [阶段 2/3] 百度网盘自动化下载...");
-                
+
                 SaveBaiduConfig();
-                
+
                 if (!File.Exists(SpJsonPath))
                 {
                     AppendLog($"[警告] 未找到数据源 {SpJsonPath}，提取结果为空。操作终止。");

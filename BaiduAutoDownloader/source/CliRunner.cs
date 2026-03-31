@@ -9,12 +9,12 @@ namespace BaiduAutoDownloader
 {
     public static class CliRunner
     {
-        public static void Run(string jsonPath = "test.json", string targetDir = @"C:\tmp\test_download")
+        public static void Run(string jsonPath = "test.json", string targetDir = "test_download")
         {
             try
             {
                 var startConfig = Configuration.Load();
-                File.AppendAllText(@"C:\tmp\cli_log.txt", $"[CLI START] Reading {jsonPath} | API Mode: {startConfig.ApiMode}\n");
+                File.AppendAllText("cli_log.txt", $"[CLI START] Reading {jsonPath} | API Mode: {startConfig.ApiMode}\n");
                 string json = File.ReadAllText(jsonPath);
                 var rawDict = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<string, string>>>(json);
                 var resources = new List<ResourceItem>();
@@ -28,7 +28,7 @@ namespace BaiduAutoDownloader
                     resources.Add(new ResourceItem { Title = kvp.Key, Urls = urlArray, Pwd = pwd });
                 }
 
-                File.AppendAllText(@"C:\tmp\cli_log.txt", $"Parsed {resources.Count} tasks.\n");
+                File.AppendAllText("cli_log.txt", $"Parsed {resources.Count} tasks.\n");
 
                 var config = Configuration.Load();
                 config.TargetDirectory = targetDir;
@@ -53,26 +53,33 @@ namespace BaiduAutoDownloader
                         {
                             foreach (var url in res.Urls)
                             {
-                                File.AppendAllText(@"C:\tmp\cli_log.txt", $"[SCRAPE] {url}\n");
+                                File.AppendAllText("cli_log.txt", $"[SCRAPE] {url}\n");
                                 var scrapeRes = await scraper.InitializeAndScrapeAsync(url, res.Pwd);
 
                                 if (!scrapeRes.Success)
                                 {
-                                    File.AppendAllText(@"C:\tmp\cli_log.txt", $"[ERROR] Scrape failed: {scrapeRes.ErrorMessage}\n");
+                                    File.AppendAllText("cli_log.txt", $"[ERROR] Scrape failed: {scrapeRes.ErrorMessage}\n");
                                     continue;
                                 }
 
-                                File.AppendAllText(@"C:\tmp\cli_log.txt", $"[COOKIES] BDUSS={!string.IsNullOrEmpty(scrapeRes.Bduss)}, STOKEN={!string.IsNullOrEmpty(scrapeRes.Stoken)}, BDCLND={!string.IsNullOrEmpty(scrapeRes.Bdclnd)}\n");
+                                File.AppendAllText("cli_log.txt", $"[COOKIES] BDUSS={!string.IsNullOrEmpty(scrapeRes.Bduss)}, STOKEN={!string.IsNullOrEmpty(scrapeRes.Stoken)}, BDCLND={!string.IsNullOrEmpty(scrapeRes.Bdclnd)}\n");
 
+                                if (string.IsNullOrEmpty(scrapeRes.Bduss))
+                                {
+                                    string err = $"({res.Title}) 未检测到网盘账号登录状态。由于 CLI 为无头静默运行，无法自动显示验证码。请先手动双击打开 BaiduAutoDownloader.exe 在界面内完成一次网盘账号登录！";
+                                    File.AppendAllText("cli_log.txt", $"[FATAL] {err}\n");
+                                    Console.WriteLine($"[错误] {err}");
+                                    continue;
+                                }
                                 if (scrapeRes.RootFsids == null || scrapeRes.RootFsids.Count == 0)
                                 {
-                                    File.AppendAllText(@"C:\tmp\cli_log.txt", $"[WXLIST_FALLBACK] RootFsids empty. Attempting api fallback.\n");
+                                    File.AppendAllText("cli_log.txt", $"[WXLIST_FALLBACK] RootFsids empty. Attempting api fallback.\n");
                                     try
                                     {
                                         var uri = new Uri(url);
                                         var shortUrl = uri.AbsolutePath.TrimStart('/').Split('/')[1]; // handles /s/xxxx
                                         var wxRes = await api.GetShareListAsync(shortUrl, res.Pwd, scrapeRes.Bduss, scrapeRes.Stoken, scrapeRes.Bdclnd);
-                                        File.AppendAllText(@"C:\tmp\cli_log.txt", $"[WXLIST_RAW] {JsonConvert.SerializeObject(wxRes)}\n");
+                                        File.AppendAllText("cli_log.txt", $"[WXLIST_RAW] {JsonConvert.SerializeObject(wxRes)}\n");
                                         if (wxRes != null && wxRes.data?.list != null)
                                         {
                                             scrapeRes.RootFsids = new Newtonsoft.Json.Linq.JArray();
@@ -81,38 +88,38 @@ namespace BaiduAutoDownloader
                                     }
                                     catch (Exception wxEx)
                                     {
-                                        File.AppendAllText(@"C:\tmp\cli_log.txt", $"[WXLIST_ERROR] {wxEx.Message}\n");
+                                        File.AppendAllText("cli_log.txt", $"[WXLIST_ERROR] {wxEx.Message}\n");
                                     }
                                 }
 
-                                File.AppendAllText(@"C:\tmp\cli_log.txt", $"[SUCCESS] Found {scrapeRes.RootFsids?.Count ?? 0} root files.\n");
+                                File.AppendAllText("cli_log.txt", $"[SUCCESS] Found {scrapeRes.RootFsids?.Count ?? 0} root files.\n");
 
                                 if (scrapeRes.RootFsids == null || scrapeRes.RootFsids.Count == 0)
                                     continue;
 
                                 string tempCloudPath = $"/BaiduAutoDownloaderTemp/CLITest_{Guid.NewGuid()}";
-                                File.AppendAllText(@"C:\tmp\cli_log.txt", $"[TRANSFER] to {tempCloudPath}\n");
+                                File.AppendAllText("cli_log.txt", $"[TRANSFER] to {tempCloudPath}\n");
 
                                 var fsidArray = new List<string>();
                                 foreach(var fs in scrapeRes.RootFsids) fsidArray.Add(fs.ToString());
 
                                 scrapeRes.Bdstoken = await api.GetBdsTokenAsync(scrapeRes.Bduss, scrapeRes.Stoken);
-                                File.AppendAllText(@"C:\tmp\cli_log.txt", $"[BDSTOKEN_FORCE_FETCHED] {scrapeRes.Bdstoken}\n");
+                                File.AppendAllText("cli_log.txt", $"[BDSTOKEN_FORCE_FETCHED] {scrapeRes.Bdstoken}\n");
 
                                 // Try create dir
                                 bool created = await api.CreateCloudDirectoryAsync(tempCloudPath, scrapeRes.Bduss, scrapeRes.Stoken, scrapeRes.Bdstoken);
-                                File.AppendAllText(@"C:\tmp\cli_log.txt", $"[DIR_CREATE] HTTP success: {created}\n");
+                                File.AppendAllText("cli_log.txt", $"[DIR_CREATE] HTTP success: {created}\n");
 
                                 var transferRes = await api.TransferShareToDriveAsync(
                                     scrapeRes.ShareId, scrapeRes.Uk, scrapeRes.Bdstoken,
                                     scrapeRes.Bduss, scrapeRes.Stoken, scrapeRes.Bdclnd,
                                     fsidArray.ToArray(), tempCloudPath);
 
-                                File.AppendAllText(@"C:\tmp\cli_log.txt", $"[TRANSFER_RES] errno: {transferRes.errno}, taskid: {transferRes.taskid}\n");
+                                File.AppendAllText("cli_log.txt", $"[TRANSFER_RES] errno: {transferRes.errno}, taskid: {transferRes.taskid}\n");
                                 
                                 await Task.Delay(3000);
 
-                                File.AppendAllText(@"C:\tmp\cli_log.txt", $"[LISTING_DRIVE] {tempCloudPath}\n");
+                                File.AppendAllText("cli_log.txt", $"[LISTING_DRIVE] {tempCloudPath}\n");
                                 try
                                 {
                                     var listres = await api.ListFilesAsync(config.AccessToken, tempCloudPath);
@@ -121,7 +128,7 @@ namespace BaiduAutoDownloader
                                         throw new OpenApiAuthException(listres.errno, "Token invalid or rate limited");
                                     }
 
-                                    File.AppendAllText(@"C:\tmp\cli_log.txt", $"[OPEN_API_ROOT] {JsonConvert.SerializeObject(listres)}\n");
+                                    File.AppendAllText("cli_log.txt", $"[OPEN_API_ROOT] {JsonConvert.SerializeObject(listres)}\n");
                                     if (listres?.list != null && listres.list.Count > 0)
                                     {
                                         foreach (var f in listres.list)
@@ -133,13 +140,13 @@ namespace BaiduAutoDownloader
                                             }
 
                                             var dlink = metas?.list?[0]?.dlink;
-                                            File.AppendAllText(@"C:\tmp\cli_log.txt", $"[FILE_FOUND] {f.server_filename} Dlink Status: {!string.IsNullOrEmpty(dlink)}\n");
+                                            File.AppendAllText("cli_log.txt", $"[FILE_FOUND] {f.server_filename} Dlink Status: {!string.IsNullOrEmpty(dlink)}\n");
                                             
                                             if (!string.IsNullOrEmpty(dlink))
                                             {
                                                 using (var resp = await downloadClient.GetAsync(dlink + $"&access_token={config.AccessToken}", System.Net.Http.HttpCompletionOption.ResponseHeadersRead))
                                                 {
-                                                    File.AppendAllText(@"C:\tmp\cli_log.txt", $"[DOWNLOAD START] Length: {resp.Content.Headers.ContentLength}\n");
+                                                    File.AppendAllText("cli_log.txt", $"[DOWNLOAD START] Length: {resp.Content.Headers.ContentLength}\n");
                                                     var ds = await resp.Content.ReadAsStreamAsync();
                                                     
                                                     string relativePath = f.path.Substring(tempCloudPath.Length).TrimStart('/');
@@ -180,7 +187,7 @@ namespace BaiduAutoDownloader
                                                             }
                                                         }
                                                         Console.WriteLine($"[DL_PROG]|{f.server_filename}|Finished|0 MB/s|100");
-                                                        File.AppendAllText(@"C:\tmp\cli_log.txt", $"[DOWNLOAD SUCCESS] Fully read {totalRead} bytes into {localFilePath}.\n");
+                                                        File.AppendAllText("cli_log.txt", $"[DOWNLOAD SUCCESS] Fully read {totalRead} bytes into {localFilePath}.\n");
                                                     }
                                                 }
                                             }
@@ -188,12 +195,12 @@ namespace BaiduAutoDownloader
                                     }
                                     else
                                     {
-                                        File.AppendAllText(@"C:\tmp\cli_log.txt", $"[LIST_ERROR] Could not list transferred files. Is Open API token valid?\n");
+                                        File.AppendAllText("cli_log.txt", $"[LIST_ERROR] Could not list transferred files. Is Open API token valid?\n");
                                     }
                                 }
                                 catch (OpenApiAuthException ex)
                                 {
-                                    File.AppendAllText(@"C:\tmp\cli_log.txt", $"[FATAL] 限流或授权失效 (Err:{ex.Errno})。由于在CLI无头模式中，无法自动轮换和拉起二维码。请打开GUI模式重新授权新通道。\n");
+                                    File.AppendAllText("cli_log.txt", $"[FATAL] 限流或授权失效 (Err:{ex.Errno})。由于在CLI无头模式中，无法自动轮换和拉起二维码。请打开GUI模式重新授权新通道。\n");
                                     Console.WriteLine($"FATAL: API Rate Limited (Err: {ex.Errno}). Please run GUI to rotate AppKey and re-authenticate!");
                                 }
 
@@ -203,7 +210,8 @@ namespace BaiduAutoDownloader
                     }
                     catch (Exception ex)
                     {
-                        File.AppendAllText(@"C:\tmp\cli_log.txt", $"[FATAL] {ex}\n");
+                        File.AppendAllText("cli_log.txt", $"[FATAL] {ex}\n");
+                        Console.WriteLine($"[错误] 下载异常终止: {ex.Message}");
                     }
                     finally
                     {
@@ -215,7 +223,8 @@ namespace BaiduAutoDownloader
             }
             catch (Exception ex)
             {
-                File.AppendAllText(@"C:\tmp\cli_log.txt", $"Startup error: {ex.Message}\n");
+                File.AppendAllText("cli_log.txt", $"Startup error: {ex.Message}\n");
+                Console.WriteLine($"[错误] CLI模块启动失败: {ex.Message}");
             }
         }
     }

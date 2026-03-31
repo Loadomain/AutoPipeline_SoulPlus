@@ -46,7 +46,9 @@ namespace BaiduAutoDownloader
 
         private async void WebScraperForm_Load(object sender, EventArgs e)
         {
-            await webView.EnsureCoreWebView2Async(null);
+            string globalProfilePath = System.IO.Path.GetFullPath(System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"..\..", "BaiduWebViewData"));
+            var env = await CoreWebView2Environment.CreateAsync(null, globalProfilePath);
+            await webView.EnsureCoreWebView2Async(env);
         }
 
         public async Task<ScrapeResult> InitializeAndScrapeAsync(string url, string pwd)
@@ -172,7 +174,7 @@ namespace BaiduAutoDownloader
             try
             {
                 string htmlSnippet = await webView.ExecuteScriptAsync("document.documentElement.outerHTML");
-                System.IO.File.WriteAllText(@"C:\tmp\error_scraper.html", JsonConvert.DeserializeObject<string>(htmlSnippet));
+                System.IO.File.WriteAllText("error_scraper.html", JsonConvert.DeserializeObject<string>(htmlSnippet));
             }
             catch { }
 

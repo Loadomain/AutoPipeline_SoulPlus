@@ -115,21 +115,34 @@ namespace BaiduAutoDownloader
             // Check if oob redirect hit with token
             if (url.Contains("access_token="))
             {
-                var uri = new Uri(url);
-                string fragment = uri.Fragment;
-                if (fragment.StartsWith("#")) fragment = fragment.Substring(1);
-                
-                var parts = fragment.Split('&');
-                foreach (var part in parts)
+                try
                 {
-                    if (part.StartsWith("access_token="))
+                    string fragment = "";
+                    int hashIdx = url.IndexOf("#");
+                    if (hashIdx >= 0)
                     {
-                        AccessToken = part.Substring("access_token=".Length);
-                        this.DialogResult = DialogResult.OK;
-                        this.Close();
-                        return;
+                        fragment = url.Substring(hashIdx + 1);
+                    }
+                    else
+                    {
+                        int qmIdx = url.IndexOf("?");
+                        if (qmIdx >= 0) fragment = url.Substring(qmIdx + 1);
+                        else fragment = url;
+                    }
+
+                    var parts = fragment.Split('&');
+                    foreach (var part in parts)
+                    {
+                        if (part.StartsWith("access_token="))
+                        {
+                            AccessToken = part.Substring("access_token=".Length);
+                            this.DialogResult = DialogResult.OK;
+                            this.Close();
+                            return;
+                        }
                     }
                 }
+                catch { }
             }
         }
     }

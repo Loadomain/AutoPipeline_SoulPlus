@@ -24,6 +24,8 @@ namespace SouthPlusDownloader
             {
                 // CLI 模式
                 AttachConsole(ATTACH_PARENT_PROCESS);
+                try { System.Console.OutputEncoding = System.Text.Encoding.UTF8; } catch { }
+                System.Console.SetOut(new System.IO.StreamWriter(System.Console.OpenStandardOutput(), new System.Text.UTF8Encoding(false)) { AutoFlush = true });
                 Console.WriteLine("\r\n[SouthPlus Downloader] 命令行模式启动...");
 
                 RunCliMode(args);
@@ -97,7 +99,7 @@ namespace SouthPlusDownloader
                             if (string.IsNullOrEmpty(syncCfg.Cookie)) { Console.WriteLine("[错误] 请先配置Cookie以同步板块。"); return; }
                             var handler = new System.Net.Http.HttpClientHandler { UseCookies = false, AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate };
                             var httpClient = new System.Net.Http.HttpClient(handler);
-                            if(!string.IsNullOrEmpty(syncCfg.UserAgent)) httpClient.DefaultRequestHeaders.Add("User-Agent", syncCfg.UserAgent);
+                            if (!string.IsNullOrEmpty(syncCfg.UserAgent)) httpClient.DefaultRequestHeaders.Add("User-Agent", syncCfg.UserAgent);
                             var bm = new BoardManager(syncCfg, httpClient, Console.WriteLine);
                             bm.FetchLatestBoardsAsync(new System.Threading.CancellationToken()).GetAwaiter().GetResult();
                             return;
@@ -132,7 +134,8 @@ namespace SouthPlusDownloader
                     Console.WriteLine(formattedMsg);
                     if (enableLog)
                     {
-                        lock (logFile) {
+                        lock (logFile)
+                        {
                             File.AppendAllText(logFile, formattedMsg + Environment.NewLine);
                         }
                     }
