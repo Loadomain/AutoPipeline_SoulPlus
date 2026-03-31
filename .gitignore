@@ -1,0 +1,15 @@
+/AutoExtractor/publish
+/AutoExtractor/source/bin
+/AutoExtractor/source/obj
+
+/SouthPlusDownloader/publish
+/SouthPlusDownloader/source/bin
+/SouthPlusDownloader/source/obj
+
+/BaiduAutoDownloader/publish
+/BaiduAutoDownloader/source/bin
+/BaiduAutoDownloader/source/obj
+
+/AutoPipeline/publish
+/AutoPipeline/bin
+/AutoPipeline/obj
